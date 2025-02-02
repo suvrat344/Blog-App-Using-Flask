@@ -15,7 +15,7 @@ from extensions import bcrypt, db, login_manager
 from flask import abort, Flask, flash, redirect, render_template, request, url_for
 from flask_login import login_required, current_user
 from forms import PostForm, UpdateAccountForm
-from models import Post
+from models import Post, User
 from PIL import Image
 import os
 import secrets
@@ -36,7 +36,8 @@ app.register_blueprint(auth_blueprint)
 @app.route("/")
 @app.route("/home")
 def home():
-  posts = Post.query.all()
+  page = request.args.get('page', 1, type = int)
+  posts = Post.query.order_by(Post.date_posted.desc()).paginate(page = page, per_page = 5)
   return render_template("home.html", posts = posts)
 
 
@@ -125,6 +126,17 @@ def delete_post(post_id):
   db.session.commit()
   flash("Your post has been deleted!", category = "success")
   return redirect(url_for('home'))
+
+
+@app.route("/user/<string:username>")
+def user_post(username):
+  page = request.args.get('page', 1, type = int)
+  user = User.query.filter_by(username = username).first_or_404()
+  posts = Post.query.filter_by(author = user)\
+    .order_by(Post.date_posted.desc())\
+    .paginate(page = page, per_page = 5)
+  return render_template("user_post.html", posts = posts, user = user)
+
 
 if __name__ == "__main__":
   app.run(debug = True)
